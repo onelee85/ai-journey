@@ -10,13 +10,26 @@
 - 高级API调用（带系统提示和参数）
 - 错误处理
 
-运行：
-copy .env.example 文件 重名 .env，配置 API_BASE 和 API_KEY
+### 2. LLM_API_Stream_demo.py
 
+专门用于演示流式输出功能的示例，包含：
+- 基本流式输出实现
+- 实时响应展示
+- 错误处理机制
+- 交互式聊天功能
+
+运行：
 ```bash
 pip3 install -r requirements.txt
 
+# 配置 API_BASE 和 API_KEY
+copy .env.example .env
+
+# 运行基本API调用示例
 python llm_api_demo.py
+
+# 运行流式输出示例
+python LLM_API_Stream_demo.py
 ```
 
 ## 学习要点
@@ -48,7 +61,9 @@ python llm_api_demo.py
 ### 流式响应
 - 设置 `stream=True` 参数
 - 逐块接收和处理响应
-- 提升用户体验
+- **基本实现**：设置 `stream=True` 参数启用流式输出
+- **逐块处理**：使用 for 循环逐块接收和处理响应
+- **实时展示**：通过 `print(content, end="", flush=True)` 实现实时输出
 
 ## 常见问题
 
