@@ -62,3 +62,24 @@ def llm_json_schema(model_name, prompt, schema):
         print(f"API错误：{e}")
     except Exception as e:
         print(f"未知错误：{e}")
+
+
+def llm_function_call(model_name, messages, tools):
+    try:
+        response = client.chat.completions.create(
+            model=model_name,
+            messages=messages,
+            temperature=0.7,
+            max_tokens=300,
+            tools=tools
+        )
+        return response
+
+    except openai.APIConnectionError as e:
+        print(f"网络错误：连接失败 - {e}")
+    except openai.AuthenticationError as e:
+        print(f"认证错误：API密钥无效 - {e}")
+    except openai.APIError as e:
+        print(f"API错误：{e}")
+    except Exception as e:
+        print(f"未知错误：{e}")
