@@ -37,7 +37,7 @@ class PromptTemplate:
 
 article_summary_prompt = ArticleSummaryPrompt().format(article="这是一篇关于AI的文章")
 print(article_summary_prompt)
-response = llm("qwen3.5-2b", article_summary_prompt)
+response = llm("openrouter/free", article_summary_prompt)
 print(response)
 
 template = PromptTemplate("""
@@ -52,5 +52,5 @@ prompt = template.format(
 )
 print(prompt)
 # 调用
-response = llm("qwen3.5-2b", prompt)
+response = llm("stepfun/step-3.5-flash:free", prompt)
 print(response)
