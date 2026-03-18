@@ -3,6 +3,7 @@ from utils.llm_api_client import llm_function_call
 import json
 import requests
 from bs4 import BeautifulSoup
+from utils.weather_app import WeatherApp
 
 
 # 1. 定义真实天气查询函数（模拟API）
@@ -14,6 +15,13 @@ def get_weather(city: str) -> str:
         "广州": "多云，25℃，适宜出行"
     }
     return weather_data.get(city, "暂未查询到该城市天气")
+
+
+# 1.1 通过天气API查询函数获取天气信息
+def get_weather_by_api(city: str) -> str:
+    app = WeatherApp()
+    weather_data = app.get_weather(city)
+    return weather_data
 
 
 # 2. 计算器 calculate 函数
@@ -186,7 +194,7 @@ def call_llm(prompt):
         result = None
         print(f"tool_calls 调用函数：{func_name} 参数：{func_args_dict}")
         if func_name == "get_weather":
-            result = get_weather(**func_args_dict)
+            result = get_weather_by_api(**func_args_dict)
         elif func_name == "calculate":
             result = calculate(**func_args_dict)
         elif func_name == "search":
@@ -205,6 +213,6 @@ def call_llm(prompt):
 if __name__ == "__main__":
     # call_llm("3加 2 等于多少?")
     # call_llm("你是什么模型?")
-    # call_llm("北京现在热吗?")
-    call_llm("帮我搜索下最近的中超新闻？")
+    call_llm("长沙适合穿什么衣服?")
+    # call_llm("帮我搜索下最近的中超新闻？")
     # print(search("人工智能"))
