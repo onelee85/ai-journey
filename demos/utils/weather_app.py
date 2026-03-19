@@ -1,6 +1,4 @@
 
-from utils.llm_api_client import llm_function_call
-import json
 import requests
 from dotenv import load_dotenv
 import os
@@ -22,9 +20,9 @@ class WeatherApp:
         params = {
             "location": self.get_location_city(city)
         }
-        response = requests.get(
-            self.base_url + "/v7/weather/now", headers=headers, params=params)
-        data = response.json().get("now", {})
+        with requests.get(
+                self.base_url + "/v7/weather/now", headers=headers, params=params) as response:
+            data = response.json().get("now", {})
         return data
 
     def get_location_city(self, location):
@@ -37,9 +35,9 @@ class WeatherApp:
         params = {
             "location": location
         }
-        response = requests.get(
-            self.base_url+"/geo/v2/city/lookup", headers=headers, params=params)
-        data = response.json().get("location", [{}])[0].get("id", "")
+        with requests.get(
+                self.base_url+"/geo/v2/city/lookup", headers=headers, params=params) as response:
+            data = response.json().get("location", [{}])[0].get("id", "")
         return data
 
 

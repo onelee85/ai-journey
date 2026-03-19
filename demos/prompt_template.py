@@ -35,10 +35,10 @@ class PromptTemplate:
         return self.template.substitute(kwargs)
 
 
-article_summary_prompt = ArticleSummaryPrompt().format(article="这是一篇关于AI的文章")
-print(article_summary_prompt)
-response = llm("openrouter/free", article_summary_prompt)
-print(response)
+# article_summary_prompt = ArticleSummaryPrompt().format(article="这是一篇关于AI的文章")
+# print(article_summary_prompt)
+# response = llm("openrouter/free", article_summary_prompt)
+# print(response)
 
 template = PromptTemplate("""
 You are a $role.
@@ -47,8 +47,8 @@ Explain $topic.
 """)
 
 prompt = template.format(
-    role="AI expert",
-    topic="neural networks"
+    role="天气预报员",
+    topic="上海今天的天气如何?是否需要带伞？"
 )
 print(prompt)
 # 调用
