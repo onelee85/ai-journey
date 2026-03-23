@@ -3,3 +3,4 @@ python-dotenv
 langchain
 requests
 beautifulsoup4
+FastAPI
