@@ -1,10 +1,19 @@
+from unittest import expectedFailure
 from fastapi import FastAPI
 import openai
 import os
 from dotenv import load_dotenv
+from requests import sessions
+import redis
+import logging
+import uuid
+
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 load_dotenv()
-
+# 本地启动命令：cd /Users/lijiao/Documents/AI/ai-journey && .venv/bin/python -m uvicorn main:app --reload --app-dir demos/chatAPI
 
 # 配置 LM Studio 本地 API 端点
 openai.api_base = os.getenv("LM_STUDIO_API_BASE")  # LM Studio 默认端口
@@ -16,9 +25,6 @@ client = openai.OpenAI(
     base_url=openai.api_base,
     api_key=openai.api_key
 )
-
-
-# 本地启动命令：cd /Users/lijiao/Documents/AI/ai-journey && .venv/bin/python -m uvicorn main:app --reload --app-dir demos/chatAPI
 
 
 app = FastAPI(
@@ -134,17 +140,71 @@ LOCAL_MODELS = [
 ALL_MODELS = OPENROUTER_FREE_MODELS + LOCAL_MODELS
 
 
+class HistoryStore:
+    def __init__(self, use_redis: bool = False):
+        self.use_redis = use_redis
+        self.history = {}
+        if use_redis:
+            # redis 连接发送异常 则使用本地内存存储
+            try:
+                self.redis_client = redis.Redis(
+                    host="localhost", port=6379, db=0)
+                self.redis_client.ping()
+            except Exception as e:
+                self.redis_client = None
+                self.use_redis = False
+                self.memory_store = {}
+                logger.error(f"Redis 连接失败：{str(e)}")
+        else:
+            self.memory_store = {}
+
+    def save_history(self, session_id, history, max_length=50):
+        ''' 
+          保持最近的 max_length 条对话记录
+        '''
+        if len(history) > max_length:
+            history = history[-max_length:]
+        if self.use_redis:
+            self.redis_client.set(
+                f"chat:session:{session_id}", json.dumps(history))
+        else:
+            self.memory_store[session_id] = history
+
+    def get_history(self, session_id):
+        if self.use_redis:
+            history = self.redis_client.get(
+                f"chat:session:{session_id}")
+            return json.loads(history) if history else []
+        else:
+            return self.memory_store.get(session_id, [])
+
+    def clear_history(self, session_id):
+        if self.use_redis:
+            self.redis_client.delete(
+                f"chat:session:{session_id}")
+        else:
+            if session_id in self.memory_store:
+                self.memory_store.pop(session_id, None)
+
+
+# 初始化历史存储对象
+history_store = HistoryStore(use_redis=True)
+
+
 @app.get("/")
 def read_root():
     return {
         "Hello": "Chat",
         "version": "1.0.0",
         "models_count": len(ALL_MODELS),
+        "storage": "Redis" if history_store.use_redis else "Memory",
         "endpoints": {
             "/models": "获取所有模型列表",
             "/models/grouped": "按类型分组的模型列表",
             "/models/{model_id}": "获取模型详情",
-            "/chat": "聊天接口"
+            "/chat": "聊天接口(支持多轮对话)",
+            "/chat/clear": "清除对话历史",
+            "/chat/history": "获取对话历史"
         }
     }
 
@@ -190,27 +250,90 @@ def get_model(model_id: str):
 
 
 @app.post("/chat")
-def chat(model_name: str, message: str):
+def chat(model_name: str, content: str, session_id: str = None):
     """
     聊天接口
 
     - **model_name**: 模型名称
-    - **message**: 用户消息
+    - **content**: 用户消息
+    - **session_id**: 可选，会话 ID，用于保持对话历史
     """
     # 添加请求验证
-    if not model_name or not message:
+    if not model_name or not content:
         return {"error": "模型名称和消息不能为空"}
-    messages = [{"role": "user", "content": message}]
+
     # 模型名称是否在列表中
     if model_name not in [model["id"] for model in ALL_MODELS]:
         return {"error": f"模型 {model_name} 不存在"}
 
+    # 生成会话 ID
+    if not session_id:
+        session_id = str(uuid.uuid4())
+    # 获取历史对话
+    history = history_store.get_history(session_id)
+    messages = {"role": "user", "content": content}
+    history.append(messages)
+
     try:
-        response = llm_function_call(model_name, messages)
-        response_content = response.choices[0].message.content
-        return {"message": response_content}
+        response = llm_function_call(model_name, history)
+        logger.info(f"模型响应：{response}")
+
+        # 尝试从content字段获取响应内容
+        message = response.choices[0].message
+        response_content = message.content
+
+        # 如果content为None，尝试从reasoning字段获取
+        if response_content is None:
+            response_content = message.reasoning
+
+        # 确保有响应内容
+        if response_content is None:
+            response_content = "抱歉，未能生成响应"
+
+        # 添加助手回复
+        history.append({"role": "assistant", "content": response_content})
+        # 保存历史对话
+        history_store.save_history(session_id, history)
+        return {"message": response_content,
+                "session_id": session_id,
+                "history_length": len(history)
+                }
     except Exception as e:
         return {"error": str(e)}
+
+
+def get_chat_history(session_id: str):
+    """
+    获取指定会话的对话历史
+
+    - **session_id**: 会话 ID
+    """
+    if not session_id:
+        return {"error": "会话 ID 不能为空"}
+    history = history_store.get_history(session_id)
+    return {"history": history, "history_length": len(history)}
+
+
+@app.post("/chat/clear")
+def clear_history(session_id: str):
+    """
+    清除指定会话的对话历史
+
+    - **session_id**: 会话 ID
+    """
+    history_store.clear_history(session_id)
+    return {"message": f"会话 {session_id} 的历史记录已清除"}
+
+
+@app.post("/chat/history")
+def get_history(session_id: str):
+    """
+    获取指定会话的对话历史
+
+    - **model_name**: 模型名称
+    - **session_id**: 会话 ID
+    """
+    return {"history": history_store.get_history(session_id)}
 
 
 def llm_function_call(model_name, messages, tools=None):
@@ -219,7 +342,7 @@ def llm_function_call(model_name, messages, tools=None):
             model=model_name,
             messages=messages,
             temperature=0.7,
-            max_tokens=300,
+            max_tokens=1024*4,
             tools=tools
         )
         return response

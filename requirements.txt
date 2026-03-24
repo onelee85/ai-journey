@@ -4,3 +4,4 @@ langchain
 requests
 beautifulsoup4
 FastAPI
+redis
