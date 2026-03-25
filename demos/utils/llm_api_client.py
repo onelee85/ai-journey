@@ -83,3 +83,10 @@ def llm_function_call(model_name, messages, tools):
         print(f"API错误：{e}")
     except Exception as e:
         print(f"未知错误：{e}")
+
+
+if __name__ == "__main__":
+    model_name = "arcee-ai/trinity-large-preview:free"
+    prompt = "你好"
+    response = llm(model_name, prompt)
+    print(response)

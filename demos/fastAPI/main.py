@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from typing import Dict
 
-# 本地启动命令：~/Documents/AI/ai-journey/.venv/bin/python -m uvicorn main:app --reload --app-dir demos/fastAPI
+# 本地启动命令：～/Documents/AI/ai-journey/.venv/bin/python -m uvicorn main:app --reload --app-dir demos/fastAPI
 
 
 # 定义用户模型

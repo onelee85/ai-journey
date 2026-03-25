@@ -7,7 +7,7 @@ from requests import sessions
 import redis
 import logging
 import uuid
-
+from token_utils import TokenLimiter, TokenCounter
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -32,7 +32,6 @@ app = FastAPI(
     description="AI 聊天 API 服务",
     version="1.0.0"
 )
-
 
 # OpenRouter 免费模型列表
 # 来源: https://openrouter.ai/collections/free-models
@@ -159,7 +158,7 @@ class HistoryStore:
             self.memory_store = {}
 
     def save_history(self, session_id, history, max_length=50):
-        ''' 
+        '''
           保持最近的 max_length 条对话记录
         '''
         if len(history) > max_length:
@@ -273,6 +272,12 @@ def chat(model_name: str, content: str, session_id: str = None):
     history = history_store.get_history(session_id)
     messages = {"role": "user", "content": content}
     history.append(messages)
+    # 检查 token 数量
+    counter = TokenCounter(model_name)
+    limiter = TokenLimiter(max_input_tokens=100,
+                           max_output_tokens=200, model_limit=128000)
+    count_input_tokens = counter.count_messages(history)
+    limiter.check_input(count_input_tokens)
 
     try:
         response = llm_function_call(model_name, history)
@@ -290,13 +295,20 @@ def chat(model_name: str, content: str, session_id: str = None):
         if response_content is None:
             response_content = "抱歉，未能生成响应"
 
+        output_tokens = counter.count_tokens(response_content)
+        limiter.check_total(count_input_tokens, output_tokens)
         # 添加助手回复
         history.append({"role": "assistant", "content": response_content})
         # 保存历史对话
         history_store.save_history(session_id, history)
         return {"message": response_content,
                 "session_id": session_id,
-                "history_length": len(history)
+                "history_length": len(history),
+                "usage": {
+                    "input_tokens": count_input_tokens,
+                    "output_tokens": output_tokens,
+                    "total_tokens": count_input_tokens + output_tokens
+                }
                 }
     except Exception as e:
         return {"error": str(e)}
