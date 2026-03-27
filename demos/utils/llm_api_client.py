@@ -86,7 +86,8 @@ def llm_function_call(model_name, messages, tools):
 
 
 if __name__ == "__main__":
-    model_name = "arcee-ai/trinity-large-preview:free"
+    # Qwen3.5-Plus,GLM-5 模型
+    model_name = "Qwen3.5-Plus"
     prompt = "你好"
     response = llm(model_name, prompt)
     print(response)
