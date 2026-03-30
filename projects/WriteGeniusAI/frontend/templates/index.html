@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WriteGeniusAI - AI写作助手</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        background-color: #f5f5f5;
+      }
+
+      .container {
+        max-width: 800px;
+        margin: 2rem auto;
+        padding: 2rem;
+        background-color: #fff;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+
+      h1 {
+        text-align: center;
+        color: #2c3e50;
+        margin-bottom: 2rem;
+      }
+
+      .form-group {
+        margin-bottom: 1.5rem;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+        color: #555;
+      }
+
+      input[type="text"],
+      select,
+      textarea {
+        width: 100%;
+        padding: 0.8rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 1rem;
+        transition: border-color 0.3s;
+      }
+
+      input[type="text"]:focus,
+      select:focus,
+      textarea:focus {
+        outline: none;
+        border-color: #3498db;
+      }
+
+      textarea {
+        resize: vertical;
+        min-height: 100px;
+      }
+
+      .btn {
+        display: inline-block;
+        padding: 0.8rem 1.5rem;
+        background-color: #3498db;
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: background-color 0.3s;
+      }
+
+      .btn:hover {
+        background-color: #2980b9;
+      }
+
+      .btn:disabled {
+        background-color: #bdc3c7;
+        cursor: not-allowed;
+      }
+
+      .result {
+        margin-top: 2rem;
+        padding: 1.5rem;
+        background-color: #f9f9f9;
+        border-radius: 4px;
+        border-left: 4px solid #3498db;
+      }
+
+      .result h2 {
+        color: #2c3e50;
+        margin-bottom: 1rem;
+      }
+
+      .result-content {
+        white-space: pre-wrap;
+        line-height: 1.6;
+      }
+
+      .loading {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        border-top-color: #fff;
+        animation: spin 1s ease-in-out infinite;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .error {
+        color: #e74c3c;
+        margin-top: 1rem;
+      }
+
+      .style-info {
+        font-size: 0.9rem;
+        color: #7f8c8d;
+        margin-top: 0.3rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>WriteGeniusAI - AI写作助手</h1>
+
+      <form id="generate-form">
+        <div class="form-group">
+          <label for="topic">文章主题</label>
+          <input
+            type="text"
+            id="topic"
+            name="topic"
+            required
+            placeholder="请输入文章主题"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="style">写作风格</label>
+          <select id="style" name="style" required>
+            <option value="academic">学术风格</option>
+            <option value="business">商务风格</option>
+            <option value="creative" selected>创意风格</option>
+            <option value="technical">技术风格</option>
+            <option value="story">故事风格</option>
+          </select>
+          <div class="style-info" id="style-info">
+            富有想象力、生动形象的创意写作风格
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="length">文章长度</label>
+          <select id="length" name="length" required>
+            <option value="short">短篇 (约200字)</option>
+            <option value="medium" selected>中篇 (约500字)</option>
+            <option value="long">长篇 (约1000字)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="title">文章标题 (可选)</label>
+          <input
+            type="text"
+            id="title"
+            name="title"
+            placeholder="如果不填写，系统会自动生成"
+          />
+        </div>
+
+        <button type="submit" class="btn" id="generate-btn">
+          <span id="btn-text">生成文章</span>
+          <span class="loading" id="loading" style="display: none"></span>
+        </button>
+      </form>
+
+      <div class="result" id="result" style="display: none">
+        <h2 id="result-title"></h2>
+        <div class="result-content" id="result-content"></div>
+      </div>
+
+      <div class="error" id="error" style="display: none"></div>
+    </div>
+
+    <script>
+      // 硬编码风格信息
+      const styles = {
+        academic: {
+          name: "学术风格",
+          description: "正式、严谨、逻辑清晰的学术写作风格",
+        },
+        business: {
+          name: "商务风格",
+          description: "专业、简洁、目标明确的商务写作风格",
+        },
+        creative: {
+          name: "创意风格",
+          description: "富有想象力、生动形象的创意写作风格",
+        },
+        technical: {
+          name: "技术风格",
+          description: "准确、详细、专业的技术写作风格",
+        },
+        story: {
+          name: "故事风格",
+          description: "生动、感人、有情节的故事写作风格",
+        },
+      };
+
+      // 风格选择事件
+      document.getElementById("style").addEventListener("change", function () {
+        const styleKey = this.value;
+        document.getElementById("style-info").textContent =
+          styles[styleKey].description;
+      });
+
+      // 表单提交事件
+      document
+        .getElementById("generate-form")
+        .addEventListener("submit", function (e) {
+          e.preventDefault();
+
+          // 显示加载状态
+          document.getElementById("btn-text").textContent = "生成中...";
+          document.getElementById("loading").style.display = "inline-block";
+          document.getElementById("generate-btn").disabled = true;
+          document.getElementById("result").style.display = "none";
+          document.getElementById("error").style.display = "none";
+
+          // 获取表单数据
+          const formData = {
+            topic: document.getElementById("topic").value,
+            style: document.getElementById("style").value,
+            length: document.getElementById("length").value,
+            title: document.getElementById("title").value || null,
+          };
+
+          // 发送请求
+          fetch("/stream", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(formData),
+          })
+            .then((response) => {
+              if (!response.ok) {
+                throw new Error("网络请求失败");
+              }
+              return response.body;
+            })
+            .then((body) => {
+              const reader = body.getReader();
+              let result = "";
+
+              function read() {
+                return reader.read().then(({ done, value }) => {
+                  if (done) {
+                    // 处理完整响应
+                    try {
+                      const data = JSON.parse(result);
+                      if (data.error) {
+                        throw new Error(data.error);
+                      }
+                      document.getElementById("result-title").textContent =
+                        data.title;
+                      document.getElementById("result-content").textContent =
+                        data.content;
+                      document.getElementById("result").style.display = "block";
+                    } catch (e) {
+                      document.getElementById("error").textContent =
+                        "生成失败: " + e.message;
+                      document.getElementById("error").style.display = "block";
+                    }
+
+                    // 恢复按钮状态
+                    document.getElementById("btn-text").textContent =
+                      "生成文章";
+                    document.getElementById("loading").style.display = "none";
+                    document.getElementById("generate-btn").disabled = false;
+                    return;
+                  }
+
+                  // 处理流式数据
+                  result += new TextDecoder("utf-8").decode(value);
+                  return read();
+                });
+              }
+
+              return read();
+            })
+            .catch((error) => {
+              document.getElementById("error").textContent =
+                "生成失败: " + error.message;
+              document.getElementById("error").style.display = "block";
+
+              // 恢复按钮状态
+              document.getElementById("btn-text").textContent = "生成文章";
+              document.getElementById("loading").style.display = "none";
+              document.getElementById("generate-btn").disabled = false;
+            });
+        });
+    </script>
+  </body>
+</html>
