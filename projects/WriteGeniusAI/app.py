@@ -7,6 +7,7 @@ import uvicorn
 from src.article_generator import article_generator
 from src.style_manager import style_manager
 from src.config import config
+from src.model_provider import ModelProviderFactory, model_provider
 
 # 创建FastAPI应用
 app = FastAPI(
@@ -30,6 +31,10 @@ class GenerateRequest(BaseModel):
     length: str = Field(
         "medium", pattern="^(short|medium|long)$", description="文章长度")
     title: Optional[str] = Field(None, max_length=100, description="文章标题")
+
+
+class ModelProviderRequest(BaseModel):
+    provider: str = Field(..., pattern="^(openai|ollama)$", description="模型提供者")
 
 # 根路径
 
@@ -104,6 +109,29 @@ def stream_article(request: GenerateRequest):
             yield f"{{\"error\": \"文章生成失败，请稍后重试\"}}"
 
     return StreamingResponse(generate(), media_type="application/json")
+
+
+# 模型提供者管理
+
+
+@app.get("/model/provider")
+def get_current_provider():
+    """获取当前模型提供者"""
+    return {"current_provider": config.MODEL_PROVIDER}
+
+
+@app.post("/model/provider")
+def set_model_provider(request: ModelProviderRequest):
+    """设置模型提供者"""
+    try:
+        # 更新全局配置
+        config.MODEL_PROVIDER = request.provider
+        # 更新全局模型提供者实例
+        global model_provider
+        model_provider = ModelProviderFactory.get_provider(request.provider)
+        return {"message": f"模型提供者已切换为 {request.provider}"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="切换模型提供者失败")
 
 
 # 运行应用

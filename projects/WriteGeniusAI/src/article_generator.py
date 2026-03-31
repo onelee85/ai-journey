@@ -1,5 +1,5 @@
 from typing import Optional, Generator, Dict, Any
-from .openai_client import openai_client
+from .model_provider import model_provider
 from .style_manager import style_manager
 
 
@@ -17,7 +17,7 @@ class ArticleGenerator:
             生成的标题
         """
         prompt = f"为主题 '{topic}' 生成一个吸引人的文章标题，风格为 {style}。"
-        return openai_client.generate_content(prompt, max_tokens=50)
+        return model_provider.generate_content(prompt, max_tokens=50)
 
     def generate_content(
         self,
@@ -57,7 +57,7 @@ class ArticleGenerator:
         else:
             prompt = f"{base_prompt} 长度为{content_length}。"
 
-        return openai_client.generate_content(prompt)
+        return model_provider.generate_content(prompt)
 
     def stream_content(
         self,
@@ -97,7 +97,7 @@ class ArticleGenerator:
         else:
             prompt = f"{base_prompt} 长度为{content_length}。"
 
-        yield from openai_client.stream_content(prompt)
+        yield from model_provider.stream_content(prompt)
 
 
 # 创建生成器实例

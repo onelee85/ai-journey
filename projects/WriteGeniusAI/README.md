@@ -62,7 +62,9 @@ pip install -r requirements.txt
 
 ### 2. 配置API密钥
 
-编辑 `.env` 文件，填入你的OpenAI API密钥：
+编辑 `.env` 文件，根据使用的模型提供者进行配置：
+
+#### 使用OpenAI API（远程模型）
 
 ```
 # OpenAI API Key
@@ -76,6 +78,30 @@ DEBUG=True
 # API Configuration
 API_TIMEOUT=30
 API_RETRY_COUNT=3
+
+# 模型配置
+DEFAULT_MODEL=gpt-3.5-turbo
+MODEL_PROVIDER=openai
+```
+
+#### 使用Ollama（本地模型）
+
+```
+# System Configuration
+APP_NAME=WriteGeniusAI
+APP_VERSION=1.0.0
+DEBUG=True
+
+# API Configuration
+API_TIMEOUT=30
+API_RETRY_COUNT=3
+
+# Ollama 配置
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=llama3
+
+# 模型配置
+MODEL_PROVIDER=ollama
 ```
 
 ### 3. 启动应用
@@ -94,12 +120,122 @@ uvicorn app:app --host 0.0.0.0 --port 8000 --reload
 
 ## 📚 使用指南
 
+### Web界面使用
+
 1. **输入主题**：在「文章主题」输入框中输入你想要生成的文章主题
 2. **选择风格**：从「写作风格」下拉菜单中选择适合的写作风格
 3. **选择长度**：从「文章长度」下拉菜单中选择文章长度
 4. **输入标题**：（可选）在「文章标题」输入框中输入自定义标题，不填写则系统自动生成
 5. **生成文章**：点击「生成文章」按钮，等待生成完成
 6. **查看结果**：生成完成后，在页面下方查看生成的文章
+
+### API使用
+
+#### 示例代码 - 使用OpenAI API
+
+```python
+import requests
+import json
+
+# 生成文章
+response = requests.post(
+    "http://localhost:8000/generate",
+    json={
+        "topic": "人工智能的未来发展",
+        "style": "技术风格",
+        "length": "中篇",
+        "title": ""
+    }
+)
+
+print(response.json())
+
+# 流式生成文章
+response = requests.post(
+    "http://localhost:8000/stream",
+    json={
+        "topic": "人工智能的未来发展",
+        "style": "技术风格",
+        "length": "中篇",
+        "title": ""
+    },
+    stream=True
+)
+
+for chunk in response.iter_content(chunk_size=1024):
+    if chunk:
+        print(chunk.decode('utf-8'), end='')
+```
+
+#### 示例代码 - 使用Ollama本地模型
+
+1. 首先确保已安装并启动Ollama服务：
+   ```bash
+   # 安装Ollama（参考官方文档）
+   # 拉取模型
+   ollama pull llama3
+   # 启动服务
+   ollama serve
+   ```
+
+2. 然后使用API：
+   ```python
+   import requests
+   import json
+
+   # 生成文章
+   response = requests.post(
+       "http://localhost:8000/generate",
+       json={
+           "topic": "人工智能的未来发展",
+           "style": "技术风格",
+           "length": "中篇",
+           "title": ""
+       }
+   )
+
+   print(response.json())
+   ```
+
+## 📖 使用场景
+
+1. **内容创作**：快速生成博客文章、社交媒体内容、营销文案等
+2. **学术写作**：辅助撰写论文、研究报告、文献综述
+3. **商务应用**：生成商业计划、产品描述、邮件模板
+4. **创意写作**：创作故事、诗歌、剧本等文学作品
+5. **技术文档**：编写API文档、用户手册、技术指南
+
+## ❓ 常见问题解答
+
+### 1. 如何切换模型提供者？
+
+修改 `.env` 文件中的 `MODEL_PROVIDER` 配置：
+- 使用OpenAI API：`MODEL_PROVIDER=openai`
+- 使用Ollama本地模型：`MODEL_PROVIDER=ollama`
+
+### 2. 本地模型和远程API有什么区别？
+
+- **OpenAI API**：需要API密钥，生成质量较高，但有使用成本
+- **Ollama本地模型**：完全免费，隐私性更好，但生成质量可能略逊于OpenAI模型
+
+### 3. 如何安装Ollama？
+
+请参考 [Ollama官方文档](https://ollama.com/download) 下载并安装适合你操作系统的版本。
+
+### 4. 生成的文章长度不符合预期怎么办？
+
+可以在 `.env` 文件中调整 `MAX_TOKENS` 参数来控制生成内容的长度。
+
+### 5. 生成过程中出现错误怎么办？
+
+- 检查API密钥是否正确（使用OpenAI时）
+- 检查Ollama服务是否正常运行（使用本地模型时）
+- 检查网络连接是否稳定
+- 尝试调整请求的主题和参数
+
+### 6. 如何自定义写作风格？
+
+可以修改 `src/style_manager.py` 文件中的风格定义，添加或修改写作风格。
 
 ## 🎨 支持的写作风格
 
