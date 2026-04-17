@@ -38,8 +38,19 @@ class ChatAnswerResponse(BaseModel):
 
 
 class KnowledgeBaseCreate(BaseModel):
-    name: str = Field(..., description="知识库名称")
-    description: Optional[str] = Field(default="", description="知识库描述")
+    name: str = Field(..., description="知识库名称", min_length=1, max_length=100)
+    description: Optional[str] = Field(
+        default="", description="知识库描述", max_length=500
+    )
+
+
+class KnowledgeBaseUpdate(BaseModel):
+    name: Optional[str] = Field(
+        default=None, description="知识库名称", min_length=1, max_length=100
+    )
+    description: Optional[str] = Field(
+        default=None, description="知识库描述", max_length=500
+    )
 
 
 class KnowledgeBaseResponse(BaseModel):
@@ -55,10 +66,22 @@ class DocumentResponse(BaseModel):
     id: str = Field(..., description="文档 ID")
     filename: str = Field(..., description="文件名")
     knowledge_base_id: str = Field(..., description="知识库 ID")
-    status: str = Field(..., description="处理状态: pending, processing, completed, failed")
+    status: str = Field(
+        ..., description="处理状态: pending, processing, completed, failed"
+    )
     page_count: Optional[int] = Field(default=None, description="页数")
+    chunk_count: Optional[int] = Field(default=None, description="分块数量")
+    file_size: Optional[int] = Field(default=None, description="文件大小(字节)")
+    content_preview: Optional[str] = Field(default=None, description="内容预览")
     created_at: datetime = Field(..., description="创建时间")
     updated_at: datetime = Field(..., description="更新时间")
+
+
+class DocumentListResponse(BaseModel):
+    documents: List[DocumentResponse] = Field(..., description="文档列表")
+    total: int = Field(..., description="总数")
+    page: int = Field(..., description="当前页")
+    page_size: int = Field(..., description="每页数量")
 
 
 class UploadResponse(BaseModel):
@@ -71,7 +94,20 @@ class DocumentUploadResponse(BaseModel):
     document_id: str = Field(..., description="文档 ID")
     filename: str = Field(..., description="文件名")
     pages: int = Field(..., description="页数")
+    chunk_count: int = Field(..., description="分块数量")
     status: str = Field(..., description="处理状态")
+
+
+class DocumentDeleteResponse(BaseModel):
+    success: bool = Field(..., description="删除是否成功")
+    document_id: str = Field(..., description="文档 ID")
+
+
+class ChunkInfo(BaseModel):
+    chunk_id: str = Field(..., description="分块 ID")
+    content: str = Field(..., description="分块内容")
+    index: int = Field(..., description="分块索引")
+    metadata: Optional[Dict[str, Any]] = Field(default=None, description="元数据")
 
 
 class HealthResponse(BaseModel):
