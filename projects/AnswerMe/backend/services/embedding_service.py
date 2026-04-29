@@ -43,14 +43,12 @@ class OpenAIEmbeddingService(EmbeddingService):
     def encode(self, text: str) -> List[float]:
         """编码单个文本"""
         try:
-            import openai
+            from openai import OpenAI
 
-            if self.api_key:
-                openai.api_key = self.api_key
+            client = OpenAI(api_key=self.api_key)
+            response = client.embeddings.create(model=self.model, input=text)
 
-            response = openai.Embedding.create(model=self.model, input=text)
-
-            return response["data"][0]["embedding"]
+            return response.data[0].embedding
 
         except ImportError:
             raise ImportError("Please install openai: pip install openai")
@@ -61,14 +59,12 @@ class OpenAIEmbeddingService(EmbeddingService):
     def encode_batch(self, texts: List[str]) -> List[List[float]]:
         """批量编码文本"""
         try:
-            import openai
+            from openai import OpenAI
 
-            if self.api_key:
-                openai.api_key = self.api_key
+            client = OpenAI(api_key=self.api_key)
+            response = client.embeddings.create(model=self.model, input=texts)
 
-            response = openai.Embedding.create(model=self.model, input=texts)
-
-            return [item["embedding"] for item in response["data"]]
+            return [item.embedding for item in response.data]
 
         except ImportError:
             raise ImportError("Please install openai: pip install openai")
@@ -128,14 +124,22 @@ def get_embedding_service(api_type: str = None, **kwargs) -> EmbeddingService:
         api_type = settings.EMBEDDING_API_TYPE
 
     if api_type == "openai":
-        api_key = kwargs.get("api_key", kwargs.get("EMBEDDING_API_KEY"))
+        from config import settings
+
+        api_key = kwargs.get(
+            "api_key", kwargs.get("EMBEDDING_API_KEY", settings.EMBEDDING_API_KEY)
+        )
         model = kwargs.get(
-            "model", kwargs.get("EMBEDDING_MODEL_NAME", "text-embedding-ada-002")
+            "model",
+            kwargs.get("EMBEDDING_MODEL_NAME", settings.EMBEDDING_MODEL_NAME),
         )
         return OpenAIEmbeddingService(api_key=api_key, model=model)
     elif api_type == "local":
+        from config import settings
+
         model_name = kwargs.get(
-            "model_name", kwargs.get("EMBEDDING_MODEL_NAME", "all-MiniLM-L6-v2")
+            "model_name",
+            kwargs.get("EMBEDDING_MODEL_NAME", settings.EMBEDDING_MODEL_NAME),
         )
         return LocalEmbeddingService(model_name=model_name)
     else:

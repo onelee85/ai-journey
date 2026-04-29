@@ -150,12 +150,15 @@ class SimpleRAGService(RAGService):
         """格式化来源"""
         sources = []
         for result in search_results:
+            metadata = result.get("metadata", {})
             sources.append(
                 {
-                    "document": result.get("document", ""),
-                    "metadata": result.get("metadata", {}),
+                    "document_id": metadata.get(
+                        "document_id", metadata.get("chunk_id", "")
+                    ),
+                    "content": result.get("document", ""),
                     "score": result.get("score", 0),
-                    "distance": result.get("distance", 0),
+                    "metadata": metadata,
                 }
             )
         return sources
@@ -222,7 +225,13 @@ class SimpleRAGService(RAGService):
             processor = get_document_processor()
 
             result = processor.process_file(file_path)
-            chunks = result["chunks"]
+            raw_chunks = result["chunks"]
+            chunks = [
+                {"content": chunk, "page": 1, "index": index}
+                if isinstance(chunk, str)
+                else chunk
+                for index, chunk in enumerate(raw_chunks)
+            ]
             content = result["content"]
             filename = result["filename"]
 
@@ -236,12 +245,14 @@ class SimpleRAGService(RAGService):
                     },
                 }
 
-            embeddings = [
-                self.embedding_service.encode(chunk["content"]) for chunk in chunks
-            ]
+            parent_doc_id = str(uuid4())
+            embeddings = self.embedding_service.encode_batch(
+                [chunk["content"] for chunk in chunks]
+            )
 
             metadatas = [
                 {
+                    "document_id": parent_doc_id,
                     "filename": filename,
                     "file_path": file_path,
                     "knowledge_base_id": knowledge_base_id,
@@ -260,7 +271,6 @@ class SimpleRAGService(RAGService):
 
             self._load_doc_metadata(knowledge_base_id)
 
-            parent_doc_id = str(uuid4())
             self._doc_metadata[parent_doc_id] = {
                 "filename": filename,
                 "file_path": file_path,
@@ -305,6 +315,16 @@ class SimpleRAGService(RAGService):
             collection_id = self.vector_db.create_collection(
                 name=name, dimension=dimension
             )
+            now = time.time()
+
+            self._load_doc_metadata(collection_id)
+            self._doc_metadata["_kb_info"] = {
+                "name": name,
+                "description": description,
+                "created_at": now,
+                "updated_at": now,
+            }
+            self._save_doc_metadata(collection_id)
 
             return {
                 "success": True,
@@ -313,8 +333,8 @@ class SimpleRAGService(RAGService):
                     "name": name,
                     "description": description,
                     "document_count": 0,
-                    "created_at": time.time(),
-                    "updated_at": time.time(),
+                    "created_at": now,
+                    "updated_at": now,
                 },
             }
 
@@ -395,6 +415,9 @@ class SimpleRAGService(RAGService):
         """更新知识库"""
         try:
             self._load_doc_metadata(kb_id)
+            if "_kb_info" not in self._doc_metadata:
+                self.get_knowledge_base(kb_id)
+                self._load_doc_metadata(kb_id)
 
             if "_kb_info" not in self._doc_metadata:
                 self._doc_metadata["_kb_info"] = {}
@@ -559,6 +582,16 @@ class SimpleRAGService(RAGService):
                     },
                 }
 
+            doc_info = self._doc_metadata[doc_id]
+            chunk_ids = doc_info.get("chunk_ids", [])
+
+            if chunk_ids:
+                self.vector_db.delete_documents(kb_id, chunk_ids)
+
+            file_path = doc_info.get("file_path")
+            if file_path and os.path.exists(file_path):
+                os.remove(file_path)
+
             del self._doc_metadata[doc_id]
             self._save_doc_metadata(kb_id)
 
@@ -575,6 +608,14 @@ class SimpleRAGService(RAGService):
             }
 
 
+_rag_service: Optional[RAGService] = None
+
+
 def get_rag_service() -> RAGService:
     """获取 RAG 服务实例"""
-    return SimpleRAGService()
+    global _rag_service
+
+    if _rag_service is None:
+        _rag_service = SimpleRAGService()
+
+    return _rag_service

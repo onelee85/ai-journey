@@ -46,19 +46,17 @@ class OpenAILLMService(LLMService):
     ) -> str:
         """生成文本"""
         try:
-            import openai
+            from openai import OpenAI
 
-            if self.api_key:
-                openai.api_key = self.api_key
-
-            response = openai.ChatCompletion.create(
+            client = OpenAI(api_key=self.api_key)
+            response = client.chat.completions.create(
                 model=self.model,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=temperature or self.temperature,
                 max_tokens=max_tokens or self.max_tokens,
             )
 
-            return response["choices"][0]["message"]["content"]
+            return response.choices[0].message.content or ""
 
         except ImportError:
             raise ImportError("Please install openai: pip install openai")
@@ -74,12 +72,10 @@ class OpenAILLMService(LLMService):
     ):
         """流式生成文本"""
         try:
-            import openai
+            from openai import OpenAI
 
-            if self.api_key:
-                openai.api_key = self.api_key
-
-            response = openai.ChatCompletion.create(
+            client = OpenAI(api_key=self.api_key)
+            response = client.chat.completions.create(
                 model=self.model,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=temperature or self.temperature,
@@ -88,8 +84,9 @@ class OpenAILLMService(LLMService):
             )
 
             for chunk in response:
-                if chunk["choices"][0]["delta"].get("content"):
-                    yield chunk["choices"][0]["delta"]["content"]
+                content = chunk.choices[0].delta.content
+                if content:
+                    yield content
 
         except ImportError:
             raise ImportError("Please install openai: pip install openai")
@@ -172,11 +169,28 @@ def get_llm_service(api_type: str = None, **kwargs) -> LLMService:
         api_type = settings.LLM_API_TYPE
 
     if api_type == "openai":
-        api_key = kwargs.get("api_key", kwargs.get("LLM_API_KEY"))
-        model = kwargs.get("model", kwargs.get("LLM_MODEL_NAME", "gpt-3.5-turbo"))
-        return OpenAILLMService(api_key=api_key, model=model)
+        from config import settings
+
+        api_key = kwargs.get(
+            "api_key", kwargs.get("LLM_API_KEY", settings.LLM_API_KEY)
+        )
+        model = kwargs.get(
+            "model", kwargs.get("LLM_MODEL_NAME", settings.LLM_MODEL_NAME)
+        )
+        return OpenAILLMService(
+            api_key=api_key,
+            model=model,
+            temperature=settings.LLM_TEMPERATURE,
+            max_tokens=settings.LLM_MAX_TOKENS,
+        )
     elif api_type == "local":
+        from config import settings
+
         model_name = kwargs.get("model_name", kwargs.get("LLM_MODEL_NAME", "gpt2"))
-        return LocalLLMService(model_name=model_name)
+        return LocalLLMService(
+            model_name=model_name,
+            temperature=settings.LLM_TEMPERATURE,
+            max_tokens=settings.LLM_MAX_TOKENS,
+        )
     else:
         raise ValueError(f"Unknown LLM API type: {api_type}")

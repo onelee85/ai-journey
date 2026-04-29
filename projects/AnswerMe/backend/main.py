@@ -3,10 +3,9 @@ from config import settings
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI
-import os
 import sys
 import logging
-from pathlib import Path
+from datetime import datetime
 
 # 加载环境变量
 from config import load_env
@@ -65,7 +64,7 @@ async def health_check():
     return {
         "status": "healthy",
         "version": settings.APP_VERSION,
-        "timestamp": "2024-01-01T00:00:00Z",
+        "timestamp": datetime.utcnow().isoformat() + "Z",
     }
 
 

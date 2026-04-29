@@ -37,6 +37,10 @@ class VectorDatabase:
         """添加文档到集合"""
         raise NotImplementedError
 
+    def delete_documents(self, collection_name: str, ids: List[str]) -> bool:
+        """从集合中删除文档"""
+        raise NotImplementedError
+
     def search(
         self,
         collection_name: str,
@@ -85,12 +89,14 @@ class ChromaVectorDatabase(VectorDatabase):
         if self._client is None:
             self.connect()
 
+        collection_name = f"kb_{uuid4().hex}"
         collection = self._client.create_collection(
-            name=name, metadata={"hnsw:space": "cosine"}
+            name=collection_name,
+            metadata={"hnsw:space": "cosine", "display_name": name},
         )
-        self._collections[name] = collection
-        logger.info(f"Created collection: {name}")
-        return collection.id
+        self._collections[collection_name] = collection
+        logger.info(f"Created collection: {collection_name}")
+        return collection_name
 
     def get_collection(self, name: str):
         """获取集合"""
@@ -123,6 +129,22 @@ class ChromaVectorDatabase(VectorDatabase):
             f"Added {len(documents)} documents to collection: {collection_name}"
         )
         return ids
+
+    def delete_documents(self, collection_name: str, ids: List[str]) -> bool:
+        """删除集合中的指定文档块"""
+        if not ids:
+            return True
+
+        try:
+            collection = self.get_collection(collection_name)
+            collection.delete(ids=ids)
+            logger.info(
+                f"Deleted {len(ids)} documents from collection: {collection_name}"
+            )
+            return True
+        except Exception as e:
+            logger.error(f"Error deleting documents from {collection_name}: {e}")
+            return False
 
     def search(
         self,
@@ -189,7 +211,7 @@ class ChromaVectorDatabase(VectorDatabase):
 
         collections = self._client.list_collections()
         return [
-            {"id": coll.id, "name": coll.name, "count": coll.count()}
+            {"id": coll.name, "name": coll.name, "count": coll.count()}
             for coll in collections
         ]
 
@@ -202,7 +224,9 @@ def get_vector_database(db_type: str = None, **kwargs) -> VectorDatabase:
         db_type = settings.VECTOR_DB_TYPE
 
     if db_type == "chroma":
-        path = kwargs.get("path", kwargs.get("VECTOR_DB_PATH", "./vector_db"))
+        from config import settings
+
+        path = kwargs.get("path", kwargs.get("VECTOR_DB_PATH", settings.VECTOR_DB_PATH))
         return ChromaVectorDatabase(path=path)
     elif db_type == "milvus":
         raise NotImplementedError("Milvus database not implemented yet")

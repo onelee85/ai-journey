@@ -9,11 +9,13 @@ class Message(BaseModel):
 
 
 class QuestionRequest(BaseModel):
-    question: str = Field(..., description="用户问题")
+    question: str = Field(..., min_length=1, description="用户问题")
     knowledge_base_id: str = Field(..., description="知识库 ID")
-    history: List[Message] = Field(default=[], description="对话历史")
-    temperature: Optional[float] = Field(default=None, description="LLM 温度参数")
-    top_k: Optional[int] = Field(default=None, description="检索 top K")
+    history: List[Message] = Field(default_factory=list, description="对话历史")
+    temperature: Optional[float] = Field(
+        default=None, ge=0, le=2, description="LLM 温度参数"
+    )
+    top_k: Optional[int] = Field(default=None, ge=1, le=20, description="检索 top K")
 
 
 class SourceDocument(BaseModel):
@@ -35,6 +37,12 @@ class ChatAnswerResponse(BaseModel):
     response_time_ms: int = Field(..., description="响应时间 (毫秒)")
     knowledge_base_id: str = Field(..., description="知识库 ID")
     question: str = Field(..., description="用户问题")
+
+
+class ChatHistoryResponse(BaseModel):
+    messages: List[Message] = Field(default_factory=list, description="对话消息")
+    total: int = Field(..., description="消息总数")
+    knowledge_base_id: str = Field(..., description="知识库 ID")
 
 
 class KnowledgeBaseCreate(BaseModel):
