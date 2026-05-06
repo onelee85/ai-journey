@@ -30,11 +30,16 @@ class OpenAILLMService(LLMService):
     """OpenAI LLM 服务实现"""
 
     def __init__(
-        self, api_key: Optional[str] = None, model: str = "gpt-3.5-turbo", **kwargs
+        self,
+        api_key: Optional[str] = None,
+        model: str = "gpt-3.5-turbo",
+        api_base: Optional[str] = None,
+        **kwargs,
     ):
         super().__init__(api_type="openai", model=model, **kwargs)
         self.api_key = api_key
         self.model = model
+        self.api_base = api_base
         self.temperature = kwargs.get("temperature", 0.7)
         self.max_tokens = kwargs.get("max_tokens", 2048)
 
@@ -48,7 +53,10 @@ class OpenAILLMService(LLMService):
         try:
             from openai import OpenAI
 
-            client = OpenAI(api_key=self.api_key)
+            client_kwargs = {"api_key": self.api_key}
+            if self.api_base:
+                client_kwargs["base_url"] = self.api_base
+            client = OpenAI(**client_kwargs)
             response = client.chat.completions.create(
                 model=self.model,
                 messages=[{"role": "user", "content": prompt}],
@@ -74,7 +82,10 @@ class OpenAILLMService(LLMService):
         try:
             from openai import OpenAI
 
-            client = OpenAI(api_key=self.api_key)
+            client_kwargs = {"api_key": self.api_key}
+            if self.api_base:
+                client_kwargs["base_url"] = self.api_base
+            client = OpenAI(**client_kwargs)
             response = client.chat.completions.create(
                 model=self.model,
                 messages=[{"role": "user", "content": prompt}],
@@ -174,12 +185,16 @@ def get_llm_service(api_type: str = None, **kwargs) -> LLMService:
         api_key = kwargs.get(
             "api_key", kwargs.get("LLM_API_KEY", settings.LLM_API_KEY)
         )
+        api_base = kwargs.get(
+            "api_base", kwargs.get("LLM_API_BASE", settings.LLM_API_BASE)
+        )
         model = kwargs.get(
             "model", kwargs.get("LLM_MODEL_NAME", settings.LLM_MODEL_NAME)
         )
         return OpenAILLMService(
             api_key=api_key,
             model=model,
+            api_base=api_base,
             temperature=settings.LLM_TEMPERATURE,
             max_tokens=settings.LLM_MAX_TOKENS,
         )

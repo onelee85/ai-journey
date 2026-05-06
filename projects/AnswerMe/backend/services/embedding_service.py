@@ -33,11 +33,13 @@ class OpenAIEmbeddingService(EmbeddingService):
         self,
         api_key: Optional[str] = None,
         model: str = "text-embedding-ada-002",
+        api_base: Optional[str] = None,
         **kwargs,
     ):
         super().__init__(api_type="openai", model=model, **kwargs)
         self.api_key = api_key
         self.model = model
+        self.api_base = api_base
         self._dimension = 1536
 
     def encode(self, text: str) -> List[float]:
@@ -45,7 +47,10 @@ class OpenAIEmbeddingService(EmbeddingService):
         try:
             from openai import OpenAI
 
-            client = OpenAI(api_key=self.api_key)
+            client_kwargs = {"api_key": self.api_key}
+            if self.api_base:
+                client_kwargs["base_url"] = self.api_base
+            client = OpenAI(**client_kwargs)
             response = client.embeddings.create(model=self.model, input=text)
 
             return response.data[0].embedding
@@ -61,7 +66,10 @@ class OpenAIEmbeddingService(EmbeddingService):
         try:
             from openai import OpenAI
 
-            client = OpenAI(api_key=self.api_key)
+            client_kwargs = {"api_key": self.api_key}
+            if self.api_base:
+                client_kwargs["base_url"] = self.api_base
+            client = OpenAI(**client_kwargs)
             response = client.embeddings.create(model=self.model, input=texts)
 
             return [item.embedding for item in response.data]
@@ -129,11 +137,14 @@ def get_embedding_service(api_type: str = None, **kwargs) -> EmbeddingService:
         api_key = kwargs.get(
             "api_key", kwargs.get("EMBEDDING_API_KEY", settings.EMBEDDING_API_KEY)
         )
+        api_base = kwargs.get(
+            "api_base", kwargs.get("EMBEDDING_API_BASE", settings.EMBEDDING_API_BASE)
+        )
         model = kwargs.get(
             "model",
             kwargs.get("EMBEDDING_MODEL_NAME", settings.EMBEDDING_MODEL_NAME),
         )
-        return OpenAIEmbeddingService(api_key=api_key, model=model)
+        return OpenAIEmbeddingService(api_key=api_key, model=model, api_base=api_base)
     elif api_type == "local":
         from config import settings
 
