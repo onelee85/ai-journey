@@ -1,0 +1,2 @@
+{"id":"ml_definition_current","question":"什么是机器学习？","expected_answer":"机器学习是人工智能的一个重要分支，让计算机从数据中学习规律，并用这些规律对新的数据进行预测、分类或决策。","expected_source_ids":["82cf6f57-127c-43ac-9a05-94a3b0840887"],"must_include":["数据","学习"],"must_not_include":["等同于深度学习"],"knowledge_base_id":"kb_e37ddc34c91e42dd995fbfde9f7498ff"}
+{"id":"ml_no_answer_current","question":"这个知识库里有没有介绍火星基地建设预算？","expected_answer":"上下文无法回答火星基地建设预算。","expected_sources":[],"must_include":["无法回答"],"must_not_include":["预算为"],"knowledge_base_id":"kb_e37ddc34c91e42dd995fbfde9f7498ff"}

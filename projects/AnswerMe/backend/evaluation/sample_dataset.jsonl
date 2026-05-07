@@ -1,0 +1,2 @@
+{"id":"ml_definition","question":"什么是机器学习？","expected_answer":"机器学习是让计算机从数据中学习规律，并使用这些规律进行预测或决策的方法。","expected_sources":["机器学习入门.md"],"must_include":["数据","学习","预测"],"must_not_include":["等同于深度学习"]}
+{"id":"ml_no_answer","question":"这个知识库里有没有介绍火星基地建设预算？","expected_answer":"上下文无法回答火星基地建设预算。","expected_sources":[],"must_include":["无法回答"],"must_not_include":["预算为"]}
